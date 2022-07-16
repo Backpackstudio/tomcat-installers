@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Download Tomcat
+# Download Tomcat 9.0.58
 echo 'Downloading Tomcat 9.0.58 ...'
 cd ~/Downloads
 curl -L https://archive.apache.org/dist/tomcat/tomcat-9/v9.0.58/bin/apache-tomcat-9.0.58.zip > apache-tomcat-9.0.58.zip
