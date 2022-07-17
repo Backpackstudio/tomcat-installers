@@ -76,7 +76,7 @@ SetFile -a E ~/Desktop/tomcat-start.command
 command='#!/bin/bash'"\n"
 command+='export JAVA_HOME=`/usr/libexec/java_home -v 11.0.15.0.1`'"\n"
 command+='echo "Stopping Tomcat..."'"\n"
-command+='cd /Library/tomcat9/bin/shutdown.sh'
+command+='/Library/tomcat9/bin/shutdown.sh'
 echo -e $command > ~/Desktop/tomcat-stop.command
 sudo chmod +x ~/Desktop/tomcat-stop.command
 SetFile -a E ~/Desktop/tomcat-stop.command
