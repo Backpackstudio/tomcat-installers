@@ -1,25 +1,66 @@
 #!/bin/bash
 
-# Download Tomcat 9.0.58
-echo 'Downloading Tomcat 9.0.58 ...'
-cd ~/Downloads
-curl -L https://archive.apache.org/dist/tomcat/tomcat-9/v9.0.58/bin/apache-tomcat-9.0.58.zip > apache-tomcat-9.0.58.zip
-unzip -qq apache-tomcat-9.0.58.zip
+## Selecting Tomcat version
+echo 'Please select Tomcat version:'
+tomcat_versions=( 'v9.0.50' 'v9.0.52 ' 'v9.0.53' 'v9.0.54 ' 'v9.0.55 ' 'v9.0.56 ' 'v9.0.58' 'v9.0.59' 'v9.0.60' 'v9.0.62' 'v9.0.63' 'v9.0.64' )
+t_version_count=0
+for t in ${tomcat_versions[@]}; do
+  echo "$t_version_count	$t"
+  t_version_count=$((t_version_count+1))
+done
+t_version_count=$((t_version_count-1))
+echo "Enter selected Tomcat version (default: $t_version_count):"
+read -e user_selection
+user_selected_version=${tomcat_versions[$user_selection]}
+if [ -z "$user_selected_version" ]
+then
+	  user_selected_version=${tomcat_versions[$t_version_count]}
+	  echo "Invalid value provided. Default version $user_selected_version is used."
+else
+	  echo "Selected Tomcat version: $user_selected_version"
+fi
+user_selected_version_a=$(echo "$user_selected_version" | cut -c2-50)
 
-# Download Redisson
-echo 'Downloading Redisson 3.16.5 ...'
-curl -L https://repo1.maven.org/maven2/org/redisson/redisson-tomcat-9/3.16.5/redisson-tomcat-9-3.16.5.jar > redisson-tomcat-9-3.16.5.jar
-curl -L https://repo1.maven.org/maven2/org/redisson/redisson-all/3.16.5/redisson-all-3.16.5.jar > redisson-all-3.16.5.jar
-mv ~/Downloads/{redisson-all-3.16.5.jar,redisson-tomcat-9-3.16.5.jar} ~/Downloads/apache-tomcat-9.0.58/lib
+# Download Tomcat 9.0.58
+echo "Downloading Tomcat $user_selected_version_a ..."
+cd ~/Downloads
+curl -L "https://archive.apache.org/dist/tomcat/tomcat-9/$user_selected_version/bin/apache-tomcat-$user_selected_version_a.zip" > "apache-tomcat-$user_selected_version_a.zip"
+unzip -qq "apache-tomcat-$user_selected_version_a.zip"
 
 echo 'Installing Tomcat'
 ## Move Tomcat to final location
-mv apache-tomcat-9.0.58 tomcat9
+mv "apache-tomcat-$user_selected_version_a" tomcat9
 sudo mkdir -p /usr/local
 sudo rm -f /Library/tomcat9
 sudo rm -f -r /usr/local/tomcat9
 sudo mv ~/Downloads/tomcat9 /usr/local
 sudo ln -s /usr/local/tomcat9 /Library/tomcat9
+
+# Download Redisson
+# Redisson version
+redisson_versions=('3.16.0' '3.16.1' '3.16.2' '3.16.3' '3.16.4' '3.16.5' '3.16.6' '3.16.7' '3.16.8' '3.17.0' '3.17.1' '3.17.2' '3.17.3' '3.17.4')
+echo 'Please select Redisson version:'
+r_version_count=0
+for t in ${redisson_versions[@]}; do
+  echo "$r_version_count	$t"
+  r_version_count=$((r_version_count+1))
+done
+r_version_count=$((r_version_count-1))
+echo "Enter selected Redisson version (default: $r_version_count):"
+read -e user_selection_redisson
+user_selected_redisson_version=${redisson_versions[$user_selection_redisson]}
+if [ -z "$user_selected_redisson_version" ]
+then
+	user_selected_redisson_version=${redisson_versions[$r_version_count]}
+	echo "Invalid value provided. Default version $user_selected_redisson_version is used."
+else
+	echo "Selected Redisson version: $user_selected_redisson_version"
+fi
+echo "Downloading Redisson $user_selected_redisson_version ..."
+curl -L "https://repo1.maven.org/maven2/org/redisson/redisson-tomcat-9/$user_selected_redisson_version/redisson-tomcat-9-$user_selected_redisson_version.jar" > "redisson-tomcat-9-$user_selected_redisson_version.jar"
+curl -L "https://repo1.maven.org/maven2/org/redisson/redisson-all/$user_selected_redisson_version/redisson-all-$user_selected_redisson_version.jar" > "redisson-all-$user_selected_redisson_version.jar"
+mv ~/Downloads/{"redisson-all-$user_selected_redisson_version.jar","redisson-tomcat-9-$user_selected_redisson_version.jar"} /Library/tomcat9/lib
+
 sudo chown -R $USER /Library/tomcat9
 sudo chmod +x /Library/tomcat9/bin/*.sh
 
@@ -89,6 +130,7 @@ echo -e $command > ~/Desktop/tomcat-folder.command
 sudo chmod +x ~/Desktop/tomcat-folder.command
 SetFile -a E ~/Desktop/tomcat-folder.command
 
+echo "Installed Tomcat $user_selected_version_a with Redisson $user_selected_redisson_version."
 echo "Tomcat Admin password: $tomcat_admin_psw"
 
 ## Open Tomcat folder.
