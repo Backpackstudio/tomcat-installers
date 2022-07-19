@@ -29,12 +29,10 @@ unzip -qq "apache-tomcat-$user_selected_version_a.zip"
 
 echo 'Installing Tomcat'
 ## Move Tomcat to final location
-mv "apache-tomcat-$user_selected_version_a" tomcat9
-sudo mkdir -p /usr/local
-sudo rm -f /Library/tomcat9
-sudo rm -f -r /usr/local/tomcat9
-sudo mv ~/Downloads/tomcat9 /usr/local
-sudo ln -s /usr/local/tomcat9 /Library/tomcat9
+mv "apache-tomcat-$user_selected_version_a" tomcat9x
+sudo mkdir -p /usr/share
+sudo rm -f -r /usr/share/tomcat9x
+sudo mv ~/Downloads/tomcat9x /usr/share
 
 # Download Redisson
 # Redisson version
@@ -59,40 +57,49 @@ fi
 echo "Downloading Redisson $user_selected_redisson_version ..."
 curl -L "https://repo1.maven.org/maven2/org/redisson/redisson-tomcat-9/$user_selected_redisson_version/redisson-tomcat-9-$user_selected_redisson_version.jar" > "redisson-tomcat-9-$user_selected_redisson_version.jar"
 curl -L "https://repo1.maven.org/maven2/org/redisson/redisson-all/$user_selected_redisson_version/redisson-all-$user_selected_redisson_version.jar" > "redisson-all-$user_selected_redisson_version.jar"
-mv ~/Downloads/{"redisson-all-$user_selected_redisson_version.jar","redisson-tomcat-9-$user_selected_redisson_version.jar"} /Library/tomcat9/lib
+mv ~/Downloads/{"redisson-all-$user_selected_redisson_version.jar","redisson-tomcat-9-$user_selected_redisson_version.jar"} /usr/share/tomcat9x/lib
 
-sudo chown -R $USER /Library/tomcat9
-sudo chmod +x /Library/tomcat9/bin/*.sh
+sudo chown -R $USER /usr/share/tomcat9x
+sudo chmod +x /usr/share/tomcat9x/bin/*.sh
+
+
 
 ## Create tomcat Native conf
+echo 'Adding libnative to environment..'
+mkdir /usr/share/tomcat9x/libnative
+ln -s /usr/lib/x86_64-linux-gnu/libtcnative-1.a /usr/share/tomcat9x/libnative/libtcnative-1.a
+ln -s /usr/lib/x86_64-linux-gnu/libtcnative-1.so /usr/share/tomcat9x/libnative/libtcnative-1.so
+ln -s /usr/lib/x86_64-linux-gnu/libtcnative-1.so.0 /usr/share/tomcat9x/libnative/libtcnative-1.so.0
+ln -s /usr/lib/x86_64-linux-gnu/libtcnative-1.so.0.2.31 /usr/share/tomcat9x/libnative/libtcnative-1.so.0.2.31
 tomcat_native='#!/bin/sh'"\n"
 tomcat_native+='# Set path to Tomcat Native.'"\n"
-tomcat_native+='CATALINA_OPTS="$CATALINA_OPTS -Djava.library.path=/usr/local/opt/tomcat-native/lib"'
-echo -e $tomcat_native > /Library/tomcat9/bin/setenv.sh
-chomd +x /Library/tomcat9/bin/setenv.sh
+tomcat_native+='CATALINA_OPTS="$CATALINA_OPTS -Djava.library.path=/usr/share/tomcat9x/libnative"'
+echo -e $tomcat_native > /usr/share/tomcat9x/bin/setenv.sh
+chomd +x /usr/share/tomcat9x/bin/setenv.sh
 
+echo 'Updating Tomcat configuration..'
 ## Create Redis conf
 redis_conf='singleServerConfig:'"\n"
 redis_conf+='  address: "redis://127.0.0.1:6379"'"\n"
-redis_conf+='  database: 0'
-echo -e $redis_conf > /Library/tomcat9/conf/redisson.yaml
+redis_conf+='  database: 0'"\n"
+echo -e $redis_conf > /usr/share/tomcat9x/conf/redisson.yaml
 
 ## Silence TLD flood
-echo -e "\n"'org.apache.jasper.servlet.TldScanner.level = WARNING'"\n" >> /Library/tomcat9/conf/logging.properties
+echo -e "\n"'org.apache.jasper.servlet.TldScanner.level = WARNING'"\n" >> /usr/share/tomcat9x/conf/logging.properties
 
 ## Add Redisson Session Manager
 replace_a='<Context reloadable="true" crossContext="true" sessionCookiePath="\/">\n'
 replace_a+='\n	<ResourceLink name="redissonsess" global="redissonsess" type="org.redisson.api.RedissonClient" \/>'
 replace_a+='\n	<Manager className="org.redisson.tomcat.JndiRedissonSessionManager" readMode="REDIS" jndiName="redissonsess" updateMode="AFTER_REQUEST" broadcastSessionEvents="true" keyPrefix="tms" \/>\n'
-sed -i '.bak' "s/<Context>/$replace_a/g" /Library/tomcat9/conf/context.xml
+sed -i "s/<Context>/$replace_a/g" /usr/share/tomcat9x/conf/context.xml
 
 ## Add Redisson data source
 replace_b='<GlobalNamingResources>\n\n'
 replace_b+='		<Resource name="redissonsess" auth="Container" factory="org.redisson.JndiRedissonFactory" configPath="${catalina.base}\/conf\/redisson.yaml" closeMethod="shutdown" \/>\n'
-sed -i '.bak' "s/<GlobalNamingResources>/$replace_b/g" /Library/tomcat9/conf/server.xml
+sed -i "s/<GlobalNamingResources>/$replace_b/g" /usr/share/tomcat9x/conf/server.xml
 
 ## Edit Tomcat users
-tomcat_admin_psw='P'$(date | md5 | cut -c1-8 | tr a-z A-Z)
+tomcat_admin_psw='P'$(date | md5sum | cut -c1-8 | tr a-z A-Z)
 users_conf='<?xml version="1.0" encoding="UTF-8"?>'"\n"
 users_conf+='<tomcat-users xmlns="http://tomcat.apache.org/xml" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://tomcat.apache.org/xml tomcat-users.xsd" version="1.0">'"\n"
 users_conf+='  <role rolename="tomcat" />'"\n"
@@ -101,48 +108,45 @@ users_conf+='  <role rolename="admin-gui" />'"\n"
 users_conf+='  <user username="manager" password="'$tomcat_admin_psw'" roles="manager-gui" />'"\n"
 users_conf+='  <user username="admin" password="'$tomcat_admin_psw'" roles="tomcat,manager-gui,admin-gui" />'"\n"
 users_conf+='</tomcat-users>'"\n"
-echo -e $users_conf > /Library/tomcat9/conf/tomcat-users.xml
+echo -e $users_conf > /usr/share/tomcat9x/conf/tomcat-users.xml
 
 ## Create startup script
 command='#!/bin/bash'"\n"
 command+='echo "Launching Tomcat..."'"\n"
-command+='export JAVA_HOME=`/usr/libexec/java_home -v 11.0.15.0.1`'"\n"
-command+='/Library/tomcat9/bin/shutdown.sh'"\n"
-command+='/Library/tomcat9/bin/startup.sh'
-echo -e $command > /Library/tomcat9/startup.sh
-sudo chown $USER /Library/tomcat9/startup.sh
-sudo chmod +x /Library/tomcat9/startup.sh
+command+='export JAVA_HOME=`/usr/libexec/java_home -v 11.0.15`'"\n"
+command+='/usr/share/tomcat9x/bin/shutdown.sh'"\n"
+command+='/usr/share/tomcat9x/bin/startup.sh'
+echo -e $command > /usr/share/tomcat9x/startup.sh
+sudo chown $USER /usr/share/tomcat9x/startup.sh
+sudo chmod +x /usr/share/tomcat9x/startup.sh
 
 ## Create start command on Desktop.
 command='#!/bin/bash'"\n"
-command+='/Library/tomcat9/startup.sh'"\n"
+command+='/usr/share/tomcat9x/startup.sh'"\n"
 command+='echo "Opening Tomcat host on web browser..."'"\n"
 command+='sleep 5'"\n"
-command+='open http://localhost:8080/'
-echo -e $command > ~/Desktop/tomcat-start.command
-sudo chmod +x ~/Desktop/tomcat-start.command
-SetFile -a E ~/Desktop/tomcat-start.command
+command+='nohup xdg-open http://localhost:8080/ >/dev/null 2>&1'
+echo -e $command > ~/Desktop/tomcat-start.sh
+sudo chmod +x ~/Desktop/tomcat-start.sh
 
 ## Create stop command on Desktop.
 command='#!/bin/bash'"\n"
-command+='export JAVA_HOME=`/usr/libexec/java_home -v 11.0.15.0.1`'"\n"
+command+='export JAVA_HOME=`/usr/libexec/java_home -v 11.0.15`'"\n"
 command+='echo "Stopping Tomcat..."'"\n"
-command+='/Library/tomcat9/bin/shutdown.sh'
-echo -e $command > ~/Desktop/tomcat-stop.command
-sudo chmod +x ~/Desktop/tomcat-stop.command
-SetFile -a E ~/Desktop/tomcat-stop.command
+command+='/usr/share/tomcat9x/bin/shutdown.sh'
+echo -e $command > ~/Desktop/tomcat-stop.sh
+sudo chmod +x ~/Desktop/tomcat-stop.sh
 
 ## Create open Tomcat folder command on Desktop.
 command='#!/bin/bash'
 command+="\n"
-command+='open /Library/tomcat9'
-echo -e $command > ~/Desktop/tomcat-folder.command
-sudo chmod +x ~/Desktop/tomcat-folder.command
-SetFile -a E ~/Desktop/tomcat-folder.command
+command+='nohup xdg-open /usr/share/tomcat9x >/dev/null 2>&1'
+echo -e $command > ~/Desktop/tomcat-folder.sh
+sudo chmod +x ~/Desktop/tomcat-folder.sh
 
 echo "Installed Tomcat $user_selected_version_a with Redisson $user_selected_redisson_version."
 echo "Tomcat Admin password: $tomcat_admin_psw"
 
 ## Open Tomcat folder.
-open ~/Desktop
-open /Library/tomcat9
+nohup xdg-open ~/Desktop >/dev/null 2>&1
+nohup xdg-open /usr/share/tomcat9x >/dev/null 2>&1
