@@ -89,13 +89,13 @@ echo -e "\n"'org.apache.jasper.servlet.TldScanner.level = WARNING'"\n" >> /usr/s
 
 ## Add Redisson Session Manager
 replace_a='<Context reloadable="true" crossContext="true" sessionCookiePath="\/">\n'
-replace_a+='\n	<ResourceLink name="redissonsess" global="redissonsess" type="org.redisson.api.RedissonClient" \/>'
-replace_a+='\n	<Manager className="org.redisson.tomcat.JndiRedissonSessionManager" readMode="REDIS" jndiName="redissonsess" updateMode="AFTER_REQUEST" broadcastSessionEvents="true" keyPrefix="tms" \/>\n'
+replace_a+='\n	<ResourceLink name="bean/redisson" global="bean/redisson" type="org.redisson.api.RedissonClient" \/>'
+replace_a+='\n	<Manager className="org.redisson.tomcat.Jndibean/redissonionManager" readMode="REDIS" jndiName="bean/redisson" updateMode="AFTER_REQUEST" broadcastSessionEvents="true" broadcastSessionUpdates="true" keyPrefix="tms" \/>\n'
 sed -i "s/<Context>/$replace_a/g" /usr/share/tomcat9x/conf/context.xml
 
 ## Add Redisson data source
 replace_b='<GlobalNamingResources>\n\n'
-replace_b+='		<Resource name="redissonsess" auth="Container" factory="org.redisson.JndiRedissonFactory" configPath="${catalina.base}\/conf\/redisson.yaml" closeMethod="shutdown" \/>\n'
+replace_b+='		<Resource name="bean/redisson" auth="Container" factory="org.redisson.JndiRedissonFactory" configPath="${catalina.base}\/conf\/redisson.yaml" closeMethod="shutdown" \/>\n'
 sed -i "s/<GlobalNamingResources>/$replace_b/g" /usr/share/tomcat9x/conf/server.xml
 
 ## Edit Tomcat users
